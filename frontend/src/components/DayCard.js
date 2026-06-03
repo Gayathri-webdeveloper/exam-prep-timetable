@@ -3,10 +3,6 @@ import React, { useState } from 'react';
 export default function DayCard({ day }) {
   const [expanded, setExpanded] = useState(false);
 
-  const difficultyColor = {
-    easy: '#16a34a', medium: '#d97706', hard: '#dc2626',
-  };
-
   return (
     <div style={styles.card} onClick={() => setExpanded(!expanded)}>
       <div style={styles.header}>
