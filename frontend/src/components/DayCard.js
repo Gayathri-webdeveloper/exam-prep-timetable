@@ -1,54 +1,93 @@
+// ─── DayCard.js ────────────────────────────────────────────────────────────
 import React, { useState } from 'react';
 
-export default function DayCard({ day }) {
-  const [expanded, setExpanded] = useState(false);
+const subjectColors = [
+  { bg: '#ede9fe', color: '#6d28d9', dot: '#7c3aed' },
+  { bg: '#dbeafe', color: '#1d4ed8', dot: '#2563eb' },
+  { bg: '#d1fae5', color: '#065f46', dot: '#10b981' },
+  { bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
+  { bg: '#fce7f3', color: '#9d174d', dot: '#ec4899' },
+];
 
-  const difficultyColors = {
-    1: '#dcfce7',
-    2: '#fef9c3',
-    3: '#fee2e2',
-  };
+let subjectColorMap = {};
+let colorIndex = 0;
+
+function getSubjectColor(subject) {
+  if (!subjectColorMap[subject]) {
+    subjectColorMap[subject] = subjectColors[colorIndex % subjectColors.length];
+    colorIndex++;
+  }
+  return subjectColorMap[subject];
+}
+
+export function DayCard({ day }) {
+  const [expanded, setExpanded] = useState(false);
+  const sc = getSubjectColor(day.subject);
 
   return (
-    <div style={styles.card}>
-      <div style={styles.header} onClick={() => setExpanded(!expanded)}>
-        <div style={styles.left}>
-          <span style={styles.dayNum}>Day {day.dayNumber}</span>
-          <span style={styles.date}>{day.date}</span>
+    <div style={dc.card}>
+      <div style={dc.header} onClick={() => setExpanded(!expanded)}>
+        <div style={dc.left}>
+          <div style={dc.dayBadge}>
+            <span style={dc.dayNum}>Day</span>
+            <span style={dc.dayVal}>{day.dayNumber}</span>
+          </div>
+          <div>
+            <div style={{ ...dc.subject, background: sc.bg, color: sc.color }}>
+              <span style={{ ...dc.dot, background: sc.dot }} />
+              {day.subject}
+            </div>
+            <div style={dc.date}>{day.date}</div>
+          </div>
         </div>
-        <div style={styles.right}>
-          <span style={styles.subject}>{day.subject}</span>
-          <span style={styles.hours}>⏰ {day.studyHours}h</span>
-          <span style={styles.arrow}>{expanded ? '▲' : '▼'}</span>
+        <div style={dc.right}>
+          <div style={dc.hoursBadge}>⏱ {day.studyHours}h</div>
+          <div style={{ ...dc.arrow, transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>
+            ▼
+          </div>
         </div>
       </div>
 
       {expanded && (
-        <div style={styles.body}>
-          <div style={styles.section}>
-            <p style={styles.sectionTitle}>📋 Today's Tasks</p>
-            <ul style={styles.list}>
+        <div style={dc.body} className="animate-fadeIn">
+          {/* Tasks */}
+          <div style={dc.section}>
+            <div style={dc.sectionHead}>
+              <span style={dc.sectionIcon}>📋</span>
+              <span style={dc.sectionTitle}>Today's Tasks</span>
+            </div>
+            <div style={dc.taskList}>
               {day.tasks.map((t, i) => (
-                <li key={i} style={styles.listItem}>
-                  <span style={styles.checkIcon}>✓</span> {t}
-                </li>
+                <div key={i} style={dc.task}>
+                  <div style={dc.taskCheck}>✓</div>
+                  <span style={dc.taskText}>{t}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
-          <div style={styles.breakBox}>
-            <p style={styles.sectionTitle}>☕ Break Schedule</p>
-            <p style={styles.breakText}>{day.breakSchedule}</p>
+          {/* Break */}
+          <div style={dc.breakBox}>
+            <span style={dc.breakIcon}>☕</span>
+            <div>
+              <div style={dc.breakTitle}>Break Schedule</div>
+              <div style={dc.breakText}>{day.breakSchedule}</div>
+            </div>
           </div>
 
+          {/* Tips */}
           {day.tips?.length > 0 && (
-            <div style={styles.tipsBox}>
-              <p style={styles.sectionTitle}>💡 Tips for Today</p>
-              <ul style={styles.list}>
-                {day.tips.map((t, i) => (
-                  <li key={i} style={styles.tipItem}>{t}</li>
-                ))}
-              </ul>
+            <div style={dc.tipsBox}>
+              <div style={dc.sectionHead}>
+                <span style={dc.sectionIcon}>💡</span>
+                <span style={dc.sectionTitle}>Pro Tips</span>
+              </div>
+              {day.tips.map((t, i) => (
+                <div key={i} style={dc.tip}>
+                  <span style={dc.tipBullet}>→</span>
+                  <span style={dc.tipText}>{t}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -57,14 +96,15 @@ export default function DayCard({ day }) {
   );
 }
 
-const styles = {
+const dc = {
   card: {
-    background: '#fff',
-    border: '1px solid #e2e8f0',
-    borderRadius: 10,
+    background: 'var(--surface)',
+    borderRadius: 12,
     marginBottom: 10,
     overflow: 'hidden',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    boxShadow: '0 1px 4px rgba(79,70,229,0.07)',
+    border: '1px solid var(--border)',
+    transition: 'box-shadow 0.2s',
   },
   header: {
     display: 'flex',
@@ -72,100 +112,111 @@ const styles = {
     alignItems: 'center',
     padding: '14px 16px',
     cursor: 'pointer',
-    background: '#f8fafc',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  left: {
-    display: 'flex',
-    alignItems: 'center',
     gap: 10,
   },
-  dayNum: {
-    fontWeight: 700,
-    color: '#1e293b',
-    fontSize: 15,
-  },
-  date: {
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  right: {
+  left: { display: 'flex', alignItems: 'center', gap: 12 },
+  dayBadge: {
+    width: 44,
+    height: 44,
+    background: 'linear-gradient(135deg, var(--primary), #7c3aed)',
+    borderRadius: 10,
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
+  dayNum: { fontSize: 9, color: 'rgba(255,255,255,0.8)', fontWeight: 600, letterSpacing: 0.5 },
+  dayVal: { fontSize: 16, color: '#fff', fontWeight: 800, lineHeight: 1 },
   subject: {
-    background: '#dbeafe',
-    color: '#1e40af',
-    padding: '3px 10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 10px',
+    borderRadius: 20,
+    fontSize: 12,
+    fontWeight: 700,
+    marginBottom: 2,
+  },
+  dot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
+  date: { fontSize: 11, color: 'var(--text3)' },
+  right: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' },
+  hoursBadge: {
+    background: 'var(--accent-light)',
+    color: '#92400e',
+    padding: '4px 10px',
     borderRadius: 20,
     fontSize: 12,
     fontWeight: 600,
   },
-  hours: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: 500,
-  },
   arrow: {
-    color: '#94a3b8',
-    fontSize: 12,
+    color: 'var(--text3)',
+    fontSize: 11,
+    transition: 'transform 0.25s',
   },
   body: {
-    padding: '16px',
-    borderTop: '1px solid #f1f5f9',
+    padding: '0 16px 16px',
+    borderTop: '1px solid var(--border)',
   },
-  section: {
-    marginBottom: 14,
+  section: { paddingTop: 14, marginBottom: 14 },
+  sectionHead: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
   },
-  sectionTitle: {
-    fontWeight: 600,
-    color: '#1e293b',
-    marginBottom: 8,
-    marginTop: 0,
-    fontSize: 14,
-  },
-  list: {
-    listStyle: 'none',
-    padding: 0,
-    margin: 0,
-  },
-  listItem: {
+  sectionIcon: { fontSize: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)' },
+  taskList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  task: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: 8,
-    padding: '6px 0',
-    borderBottom: '1px solid #f8fafc',
-    fontSize: 14,
-    color: '#334155',
+    gap: 10,
+    padding: '8px 12px',
+    background: 'var(--surface2)',
+    borderRadius: 8,
   },
-  checkIcon: {
-    color: '#22c55e',
-    fontWeight: 700,
+  taskCheck: {
+    width: 20,
+    height: 20,
+    background: 'var(--success-light)',
+    color: 'var(--success)',
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 11,
+    fontWeight: 800,
     flexShrink: 0,
   },
+  taskText: { fontSize: 13, color: 'var(--text)', lineHeight: 1.5 },
   breakBox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
     background: '#f0fdf4',
-    borderRadius: 8,
+    border: '1px solid #bbf7d0',
+    borderRadius: 10,
     padding: '12px',
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  breakText: {
-    color: '#166534',
-    fontSize: 13,
-    margin: 0,
-  },
+  breakIcon: { fontSize: 20, flexShrink: 0 },
+  breakTitle: { fontSize: 12, fontWeight: 700, color: '#065f46', marginBottom: 2 },
+  breakText: { fontSize: 12, color: '#166534', lineHeight: 1.5 },
   tipsBox: {
-    background: '#fefce8',
-    borderRadius: 8,
+    background: '#fffbeb',
+    border: '1px solid #fde68a',
+    borderRadius: 10,
     padding: '12px',
   },
-  tipItem: {
-    color: '#713f12',
-    fontSize: 13,
+  tip: {
+    display: 'flex',
+    gap: 8,
     padding: '4px 0',
-    listStyle: 'none',
   },
+  tipBullet: { color: '#f59e0b', fontWeight: 700, flexShrink: 0, fontSize: 13 },
+  tipText: { fontSize: 12, color: '#78350f', lineHeight: 1.5 },
 };
+
+export default DayCard;
