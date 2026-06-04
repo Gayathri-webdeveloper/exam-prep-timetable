@@ -1,267 +1,305 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ExamForm from '../components/ExamForm';
+import TimetableView from '../components/TimetableView';
+import { createTimetable, getAllTimetables, deleteTimetable } from '../api/api';
 
-const emptyExam = {
-  subject: '',
-  examDate: '',
-  difficulty: 'medium',
-  topics: '',
-  hoursPerDay: 4,
-};
+export default function Home() {
+  const [view, setView] = useState('form');
+  const [loading, setLoading] = useState(false);
+  const [timetable, setTimetable] = useState(null);
+  const [allTimetables, setAllTimetables] = useState([]);
+  const [error, setError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
 
-export default function ExamForm({ onSubmit, loading }) {
-  const [title, setTitle] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [exams, setExams] = useState([{ ...emptyExam }]);
+  useEffect(() => {
+    if (view === 'list') loadAll();
+  }, [view]);
 
-  const addExam = () => setExams([...exams, { ...emptyExam }]);
-  const removeExam = (i) => setExams(exams.filter((_, idx) => idx !== i));
-  const updateExam = (i, field, value) => {
-    const updated = [...exams];
-    updated[i][field] = value;
-    setExams(updated);
+  const loadAll = async () => {
+    try {
+      const res = await getAllTimetables();
+      setAllTimetables(res.data);
+    } catch {
+      setError('Failed to load timetables');
+    }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const payload = {
-      title,
-      startDate,
-      exams: exams.map((ex) => ({
-        ...ex,
-        topics: ex.topics
-          ? ex.topics.split(',').map((t) => t.trim()).filter(Boolean)
-          : [],
-        hoursPerDay: Number(ex.hoursPerDay),
-      })),
-    };
-    onSubmit(payload);
+  const handleCreate = async (data) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await createTimetable(data);
+      setTimetable(res.data);
+      setView('result');
+    } catch (e) {
+      setError(e.response?.data?.error || 'Error generating timetable');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    await deleteTimetable(id);
+    if (view === 'list') loadAll();
+    else { setTimetable(null); setView('form'); }
   };
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.card}>
-        <h2 style={styles.heading}>📚 Create Exam Timetable</h2>
-        <p style={styles.subtext}>Fill in your exam details and we'll generate a smart study schedule.</p>
+    <div style={styles.page}>
+      {/* Navbar */}
+      <nav style={styles.nav}>
+        <span style={styles.logo}>📖 ExamPrep</span>
 
-        <form onSubmit={handleSubmit}>
-          <div style={styles.field}>
-            <label style={styles.label}>Timetable Title *</label>
-            <input
-              style={styles.input}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Semester 5 Exams"
-              required
-            />
-          </div>
-
-          <div style={styles.field}>
-            <label style={styles.label}>Study Start Date *</label>
-            <input
-              style={styles.input}
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-          </div>
-
-          <h3 style={styles.subheading}>📋 Your Exams</h3>
-
-          {exams.map((exam, i) => (
-            <div key={i} style={styles.examCard}>
-              <div style={styles.examHeader}>
-                <span style={styles.examBadge}>Exam {i + 1}</span>
-                {exams.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeExam(i)}
-                    style={styles.removeBtn}
-                  >
-                    ✕ Remove
-                  </button>
-                )}
-              </div>
-
-              <div style={styles.grid2}>
-                <div style={styles.field}>
-                  <label style={styles.label}>Subject *</label>
-                  <input
-                    style={styles.input}
-                    value={exam.subject}
-                    onChange={(e) => updateExam(i, 'subject', e.target.value)}
-                    placeholder="e.g. Mathematics"
-                    required
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Exam Date *</label>
-                  <input
-                    style={styles.input}
-                    type="date"
-                    value={exam.examDate}
-                    onChange={(e) => updateExam(i, 'examDate', e.target.value)}
-                    required
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Difficulty</label>
-                  <select
-                    style={styles.input}
-                    value={exam.difficulty}
-                    onChange={(e) => updateExam(i, 'difficulty', e.target.value)}
-                  >
-                    <option value="easy">🟢 Easy</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="hard">🔴 Hard</option>
-                  </select>
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Study Hours/Day</label>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    min="1"
-                    max="12"
-                    value={exam.hoursPerDay}
-                    onChange={(e) => updateExam(i, 'hoursPerDay', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Topics (comma-separated)</label>
-                <input
-                  style={styles.input}
-                  value={exam.topics}
-                  onChange={(e) => updateExam(i, 'topics', e.target.value)}
-                  placeholder="e.g. Algebra, Calculus, Statistics"
-                />
-              </div>
-            </div>
-          ))}
-
-          <button type="button" onClick={addExam} style={styles.addBtn}>
-            + Add Another Exam
+        {/* Desktop nav links */}
+        <div style={styles.navLinks}>
+          <button onClick={() => setView('form')} style={navBtn(view === 'form')}>
+            New Timetable
           </button>
-
-          <button type="submit" style={styles.submitBtn} disabled={loading}>
-            {loading ? '⏳ Generating...' : '🗓️ Generate Timetable'}
+          <button onClick={() => setView('list')} style={navBtn(view === 'list')}>
+            Saved Timetables
           </button>
-        </form>
+        </div>
+
+        {/* Mobile hamburger */}
+        <button
+          style={styles.hamburger}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? '✕' : '☰'}
+        </button>
+      </nav>
+
+      {/* Mobile dropdown menu */}
+      {menuOpen && (
+        <div style={styles.mobileMenu}>
+          <button onClick={() => { setView('form'); setMenuOpen(false); }} style={styles.mobileMenuItem}>
+            📝 New Timetable
+          </button>
+          <button onClick={() => { setView('list'); setMenuOpen(false); }} style={styles.mobileMenuItem}>
+            📚 Saved Timetables
+          </button>
+        </div>
+      )}
+
+      {/* Content */}
+      <div style={styles.content}>
+        {error && (
+          <div style={styles.error}>{error}</div>
+        )}
+
+        {view === 'form' && (
+          <ExamForm onSubmit={handleCreate} loading={loading} />
+        )}
+
+        {view === 'result' && (
+          <TimetableView
+            timetable={timetable}
+            onDelete={() => handleDelete(timetable._id)}
+          />
+        )}
+
+        {view === 'list' && (
+          <div style={styles.listContainer}>
+            <h2 style={styles.listTitle}>Saved Timetables</h2>
+            {allTimetables.length === 0 ? (
+              <div style={styles.emptyState}>
+                <p style={{ fontSize: 48 }}>📭</p>
+                <p>No timetables yet. Create one!</p>
+                <button
+                  onClick={() => setView('form')}
+                  style={styles.createBtn}
+                >
+                  Create Timetable
+                </button>
+              </div>
+            ) : (
+              allTimetables.map((tt) => (
+                <div key={tt._id} style={styles.listCard}>
+                  <div style={styles.listCardInfo}>
+                    <strong style={styles.listCardTitle}>{tt.title}</strong>
+                    <p style={styles.listCardMeta}>
+                      {tt.schedule?.length} days • {tt.exams?.map(e => e.subject).join(', ')}
+                    </p>
+                  </div>
+                  <div style={styles.listCardActions}>
+                    <button
+                      onClick={() => { setTimetable(tt); setView('result'); }}
+                      style={styles.viewBtn}
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleDelete(tt._id)}
+                      style={styles.deleteBtn}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+const navBtn = (active) => ({
+  background: active ? 'rgba(255,255,255,0.2)' : 'transparent',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 4,
+  padding: '8px 16px',
+  cursor: 'pointer',
+  fontSize: 14,
+  fontWeight: active ? 600 : 400,
+});
+
 const styles = {
-  wrapper: {
-    width: '100%',
+  page: {
+    fontFamily: 'sans-serif',
+    minHeight: '100vh',
+    background: '#f1f5f9',
   },
-  card: {
-    background: '#fff',
-    borderRadius: 12,
-    padding: '24px 20px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  },
-  heading: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#1e293b',
-    marginBottom: 6,
-    marginTop: 0,
-  },
-  subtext: {
-    color: '#64748b',
-    fontSize: 14,
-    marginBottom: 20,
-    marginTop: 0,
-  },
-  subheading: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: '#1e293b',
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: 500,
-    color: '#475569',
-  },
-  input: {
-    padding: '10px 12px',
-    borderRadius: 8,
-    border: '1px solid #cbd5e1',
-    fontSize: 14,
-    width: '100%',
-    boxSizing: 'border-box',
-    outline: 'none',
-    background: '#f8fafc',
-  },
-  examCard: {
-    background: '#f8fafc',
-    border: '1px solid #e2e8f0',
-    borderRadius: 10,
-    padding: '16px',
-    marginBottom: 16,
-  },
-  examHeader: {
+  nav: {
+    background: '#1e40af',
+    color: '#fff',
+    padding: '14px 20px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
   },
-  examBadge: {
-    background: '#dbeafe',
-    color: '#1e40af',
-    padding: '4px 12px',
-    borderRadius: 20,
-    fontSize: 13,
-    fontWeight: 600,
+  logo: {
+    fontWeight: 700,
+    fontSize: 20,
   },
-  grid2: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: 12,
+  navLinks: {
+    display: 'flex',
+    gap: 8,
+    '@media (max-width: 600px)': {
+      display: 'none',
+    },
   },
-  removeBtn: {
-    background: '#fee2e2',
-    color: '#dc2626',
+  hamburger: {
+    display: 'none',
+    background: 'transparent',
     border: 'none',
-    borderRadius: 6,
-    padding: '6px 12px',
+    color: '#fff',
+    fontSize: 22,
     cursor: 'pointer',
-    fontSize: 13,
+    padding: '4px 8px',
+    // shown via media query in index.css
   },
-  addBtn: {
-    background: '#fff',
-    border: '2px dashed #94a3b8',
+  mobileMenu: {
+    background: '#1e3a8a',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '8px 0',
+  },
+  mobileMenuItem: {
+    background: 'transparent',
+    border: 'none',
+    color: '#fff',
+    padding: '14px 20px',
+    textAlign: 'left',
+    fontSize: 15,
+    cursor: 'pointer',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
+  },
+  content: {
+    padding: '20px 16px',
+    maxWidth: 800,
+    margin: '0 auto',
+  },
+  error: {
+    background: '#fee2e2',
+    color: '#991b1b',
+    padding: 12,
     borderRadius: 8,
-    padding: '12px 20px',
-    cursor: 'pointer',
+    marginBottom: 16,
     fontSize: 14,
-    color: '#475569',
-    width: '100%',
-    marginBottom: 14,
-    fontWeight: 500,
   },
-  submitBtn: {
+  listContainer: {
+    maxWidth: 800,
+    margin: '0 auto',
+  },
+  listTitle: {
+    fontSize: 22,
+    marginBottom: 16,
+    color: '#1e293b',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '60px 20px',
+    background: '#fff',
+    borderRadius: 12,
+    color: '#64748b',
+  },
+  createBtn: {
     background: '#2563eb',
     color: '#fff',
     border: 'none',
     borderRadius: 8,
-    padding: '14px 24px',
-    fontSize: 16,
+    padding: '12px 24px',
+    fontSize: 15,
     cursor: 'pointer',
-    width: '100%',
-    fontWeight: 600,
-    letterSpacing: 0.3,
+    marginTop: 12,
+  },
+  listCard: {
+    background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 10,
+    padding: '16px',
+    marginBottom: 12,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  listCardInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listCardTitle: {
+    fontSize: 16,
+    color: '#1e293b',
+    display: 'block',
+    marginBottom: 4,
+  },
+  listCardMeta: {
+    color: '#64748b',
+    fontSize: 13,
+    margin: 0,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  listCardActions: {
+    display: 'flex',
+    gap: 8,
+    flexShrink: 0,
+  },
+  viewBtn: {
+    background: '#2563eb',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '8px 16px',
+    cursor: 'pointer',
+    fontSize: 14,
+  },
+  deleteBtn: {
+    background: '#ef4444',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '8px 16px',
+    cursor: 'pointer',
+    fontSize: 14,
   },
 };
