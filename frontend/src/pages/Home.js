@@ -138,10 +138,10 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Footer
       <footer style={styles.footer}>
         <p>Built with ❤️ using MERN Stack · MongoDB · Express · React · Node.js</p>
-      </footer>
+      </footer> */}
     </div>
   );
 }
